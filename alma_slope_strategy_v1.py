@@ -735,12 +735,21 @@ def order_management_thread(api):
     """Thread to manage orders"""
     log_message("Starting order management thread")
     
+    last_slope_log_time = 0
+    
     try:
         while True:
+            current_time = time.time()
+            
             # Update positions and margin periodically
-            if int(time.time()) % 60 == 0:  # Every minute
+            if int(current_time) % 60 == 0:  # Every minute
                 fetch_available_margin(api)
                 fetch_current_positions(api)
+            
+            # Log ALMA slope every 10 seconds
+            if current_time - last_slope_log_time >= 10:
+                calculate_alma_slope()
+                last_slope_log_time = current_time
             
             # Check if we need to manage positions for low margin
             manage_positions_for_low_margin(api)
