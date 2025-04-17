@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 
 """
-Hyperliquid 7-Period SMMA Slope Strategy (v1)
+Hyperliquid 10-Period SMMA Slope Strategy (v5.1)
 
 This strategy:
-1. Uses a 10-period SMMA (Exponential Moving Average)
+1. Uses a 10-period SMMA (Smoothed Moving Average)
 2. Places aggressive buy orders when SMMA slope turns positive
 3. Places aggressive sell orders when SMMA slope turns negative
-4. Uses reduce-only orders when there are existing positions in the opposite direction
-5. Uses limit orders only
+4. Uses reduce-only orders to close 100% of existing positions when slope changes
+5. Uses limit orders with pricing set for immediate execution
 6. Ensures minimum order value is $10 to prevent order failures
-7. Improved reduce-only logic to only close positions when slope changes
+7. Improved reduce-only logic to close positions when slope changes
 8. Added position management for low margin situations (without closing positions)
 """
 
@@ -451,7 +451,6 @@ def should_use_reduce_only(side):
     Determine if we should use reduce-only orders based on:
     1. If there's an opposite position
     2. If the slope direction changed and we have a position
-    3. If margin is low and we have a position
     """
     if not current_positions:
         return False
@@ -465,15 +464,9 @@ def should_use_reduce_only(side):
             return True
     
     # Case 2: Slope direction changed and we have a position
-    if slope_direction_changed:
-        for position in current_positions:
-            if (smma_slope < 0 and position["side"] == "long") or \
-               (smma_slope > 0 and position["side"] == "short"):
-                log_message(f"Using reduce-only because slope direction changed with existing position")
-                return True
-    
-    # We no longer close positions just because margin is low
-    # Only close positions when slope changes or there's an opposite position
+    if slope_direction_changed and current_positions:
+        log_message(f"Using reduce-only because slope direction changed with existing position")
+        return True
     
     return False
 
@@ -518,8 +511,8 @@ def place_reduce_only_orders(api, side=None):
         # Place reduce-only orders for each position
         orders_placed = 0
         for position in reducible_positions:
-            # Calculate size to reduce (use 50% of position size)
-            reduce_size = position["size"] * 0.5
+            # Calculate size to reduce (use 100% of position size)
+            reduce_size = position["size"]
             
             # Ensure minimum order value
             order_value = reduce_size * current_price
@@ -639,11 +632,11 @@ def place_aggressive_orders(api):
             level_multiplier = (i + 1) * LEVEL_SPACING_PERCENT
             
             if order_side == "buy":
-                # Place buy orders slightly below current price
-                price = base_price * (1 - level_multiplier)
-            else:
-                # Place sell orders slightly above current price
+                # Place buy orders slightly above current price for immediate execution
                 price = base_price * (1 + level_multiplier)
+            else:
+                # Place sell orders slightly below current price for immediate execution
+                price = base_price * (1 - level_multiplier)
             
             order_levels.append(price)
         
