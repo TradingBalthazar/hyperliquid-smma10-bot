@@ -17,6 +17,15 @@ COPY run_alma_strategy.py .
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 
-# Default to running the SMMA strategy
-# To run ALMA strategy, override CMD with: python run_alma_strategy.py
-CMD ["python", "smma_slope_strategy_v5.py"]
+# Create an entrypoint script that checks for RAILWAY_COMMAND
+RUN echo '#!/bin/bash\n\
+if [ -n "$RAILWAY_COMMAND" ]; then\n\
+  echo "Running command: $RAILWAY_COMMAND"\n\
+  exec $RAILWAY_COMMAND\n\
+else\n\
+  echo "Running default command: python smma_slope_strategy_v5.py"\n\
+  exec python smma_slope_strategy_v5.py\n\
+fi' > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
+
+# Use the entrypoint script
+ENTRYPOINT ["/app/entrypoint.sh"]
