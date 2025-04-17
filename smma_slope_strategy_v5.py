@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 
 """
-Hyperliquid 10-Period SMMA Slope Strategy (v5.1)
+Hyperliquid 10-Period SMMA Slope Strategy (v5.2)
 
 This strategy:
 1. Uses a 10-period SMMA (Smoothed Moving Average)
 2. Places aggressive buy orders when SMMA slope turns positive
 3. Places aggressive sell orders when SMMA slope turns negative
-4. Uses reduce-only orders to close 100% of existing positions when slope changes
+4. Uses reduce-only orders to close 100% of existing positions when slope is opposite to position
 5. Uses limit orders with pricing set for immediate execution
 6. Ensures minimum order value is $10 to prevent order failures
-7. Improved reduce-only logic to close positions when slope changes
+7. Improved reduce-only logic to close positions when slope is opposite to position
 8. Added position management for low margin situations (without closing positions)
 """
 
@@ -450,7 +450,7 @@ def should_use_reduce_only(side):
     """
     Determine if we should use reduce-only orders based on:
     1. If there's an opposite position
-    2. If the slope direction changed and we have a position
+    2. If the current slope direction is opposite to our position
     """
     if not current_positions:
         return False
@@ -463,7 +463,16 @@ def should_use_reduce_only(side):
             log_message(f"Using reduce-only because opposite position exists")
             return True
     
-    # Case 2: Slope direction changed and we have a position
+    # Case 2: Current slope direction is opposite to our position
+    # If slope is positive, we should be in long positions
+    # If slope is negative, we should be in short positions
+    for position in current_positions:
+        if (smma_slope > 0 and position["side"] == "short") or \
+           (smma_slope < 0 and position["side"] == "long"):
+            log_message(f"Using reduce-only because current slope direction ({smma_slope > 0 and 'positive' or 'negative'}) is opposite to position ({position['side']})")
+            return True
+    
+    # Case 3: Slope direction changed and we have a position (keeping this for backward compatibility)
     if slope_direction_changed and current_positions:
         log_message(f"Using reduce-only because slope direction changed with existing position")
         return True
@@ -804,14 +813,14 @@ async def websocket_handler(api):
         await asyncio.sleep(5)
 
 def run_strategy():
-    """Run the 3-Period EMA Slope Strategy"""
-    log_message("=== STARTING 7-PERIOD SMMA SLOPE STRATEGY (V1) ===")
+    """Run the 10-Period SMMA Slope Strategy"""
+    log_message("=== STARTING 10-PERIOD SMMA SLOPE STRATEGY (V5.2) ===")
     log_message(f"Symbol: {SYMBOL}")
     log_message(f"SMMA Period: {SMMA_PERIOD}")
     log_message(f"Order Levels: {NUM_LEVELS}")
     log_message(f"Level Spacing: {LEVEL_SPACING_PERCENT*100}% (aggressive)")
-    log_message(f"Strategy Logic: Buy aggressively when SMMA slope turns positive, sell aggressively when negative")
-    log_message(f"Using reduce-only orders for opposite positions and when slope changes")
+    log_message(f"Strategy Logic: Buy aggressively when SMMA slope is positive, sell aggressively when negative")
+    log_message(f"Using reduce-only orders for opposite positions and when slope is opposite to position")
     log_message(f"Using limit orders only")
     log_message(f"Minimum Order Value: ${MIN_ORDER_VALUE} (required to prevent order failures)")
     log_message(f"Reduce-Only Threshold: ${REDUCE_ONLY_THRESHOLD}")
