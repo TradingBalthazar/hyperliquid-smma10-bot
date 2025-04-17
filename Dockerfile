@@ -6,13 +6,17 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy only the necessary files
+# Copy all strategy files
 COPY smma_slope_strategy_v5.py .
 COPY close_all_positions.py .
 COPY smma_calculation.py .
+COPY alma_slope_strategy_v1.py .
+COPY alma_calculation.py .
+COPY run_alma_strategy.py .
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 
-# Run the strategy
+# Default to running the SMMA strategy
+# To run ALMA strategy, override CMD with: python run_alma_strategy.py
 CMD ["python", "smma_slope_strategy_v5.py"]

@@ -1,8 +1,10 @@
-# Hyperliquid SMMA-10 Bot
+# Hyperliquid Trading Bot
 
-This is a trading bot for Hyperliquid that uses a 10-period SMMA (Smoothed Moving Average) slope strategy.
+This repository contains trading bots for Hyperliquid that use different moving average strategies.
 
-## Strategy Overview
+## Available Strategies
+
+### 1. SMMA-10 Slope Strategy (v5)
 
 This strategy:
 1. Uses a 10-period SMMA (Smoothed Moving Average)
@@ -13,6 +15,29 @@ This strategy:
 6. Ensures minimum order value is $10 to prevent order failures
 7. Improved reduce-only logic to only close positions when slope changes
 8. Added position management for low margin situations (without closing positions)
+
+### 2. ALMA Slope Strategy (v1)
+
+This strategy:
+1. Uses the Arnaud Legoux Moving Average (ALMA)
+2. Places aggressive buy orders when ALMA slope turns positive
+3. Places aggressive sell orders when ALMA slope turns negative
+4. Uses reduce-only orders to close 100% of existing positions when slope is opposite to position
+5. Uses limit orders with pricing set for immediate execution
+6. Ensures minimum order value is $10 to prevent order failures
+7. Improved reduce-only logic to close positions when slope is opposite to position
+8. Added position management for low margin situations (without closing positions)
+
+#### About ALMA
+
+The Arnaud Legoux Moving Average (ALMA) is a technical indicator designed by Arnaud Legoux and Dimitris Kouzis-Loukas in 2009. It uses a Gaussian distribution function to calculate a weighted average of an asset's price, reducing lag and noise compared to traditional moving averages.
+
+Key parameters:
+- Window Size: Default 9 periods
+- Offset: Default 0.85 (controls the Gaussian peak position)
+- Sigma: Default 6 (controls the Gaussian curve width)
+
+ALMA provides a smoother curve with reduced lag compared to traditional moving averages like SMA, EMA, and SMMA.
 
 ## Deployment on Railway
 
@@ -50,7 +75,9 @@ This strategy:
 
 ## Configuration
 
-You can configure the strategy by setting the following environment variables:
+You can configure the strategies by setting the following environment variables:
+
+### Common Parameters
 
 - `PRIVATE_KEY`: Your Hyperliquid private key
 - `WALLET_ADDRESS`: Your Hyperliquid wallet address
@@ -59,7 +86,6 @@ You can configure the strategy by setting the following environment variables:
 - `TIMEFRAME`: The timeframe for candles (default: "1m")
 - `LOOKBACK_PERIODS`: Number of periods to look back (default: 20)
 - `LEVERAGE`: The leverage to use (default: 3)
-- `SMMA_PERIOD`: The period for SMMA calculation (default: 10)
 - `SLOPE_LOOKBACK`: Number of periods to calculate slope (default: 2)
 - `BASE_ORDER_SIZE`: Base size in tokens (default: 0.65)
 - `LEVEL_SPACING_PERCENT`: Spacing between levels (default: 0.0005)
@@ -69,4 +95,15 @@ You can configure the strategy by setting the following environment variables:
 - `MIN_ORDER_VALUE`: Minimum order value in USDC (default: 10)
 - `MARGIN_SAFETY_FACTOR`: Margin safety factor (default: 0.7)
 - `POSITION_CHECK_INTERVAL`: Check positions every X seconds (default: 5)
+
+### SMMA Strategy Parameters
+
+- `SMMA_PERIOD`: The period for SMMA calculation (default: 10)
 - `LOG_FILE`: Log file name (default: "smma_slope_strategy_v5_log.txt")
+
+### ALMA Strategy Parameters
+
+- `ALMA_WINDOW`: Window size for ALMA calculation (default: 9)
+- `ALMA_OFFSET`: Offset parameter for ALMA (default: 0.85)
+- `ALMA_SIGMA`: Sigma parameter for ALMA (default: 6)
+- `LOG_FILE`: Log file name (default: "alma_slope_strategy_v1_log.txt")
