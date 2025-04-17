@@ -1,0 +1,6 @@
+hyperliquid
+pandas
+numpy
+websockets
+asyncio
+python-dotenv
