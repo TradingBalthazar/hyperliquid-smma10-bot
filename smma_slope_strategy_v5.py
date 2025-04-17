@@ -561,7 +561,7 @@ def place_reduce_only_orders(api, side=None):
 
 def manage_positions_for_low_margin(api):
     """Manage positions when margin is low"""
-    global available_margin, last_position_check_time
+    global available_margin, last_position_check_time, smma_slope
     
     # Only check periodically to avoid too many API calls
     current_time = time.time()
@@ -577,9 +577,20 @@ def manage_positions_for_low_margin(api):
         # Update current positions
         fetch_current_positions(api)
         
-        # If margin is low, just log it but don't take any action
+        # Always check if we have positions in the opposite direction of the slope
+        # This is now a separate check from the low margin condition
+        for position in current_positions:
+            if (smma_slope > 0 and position["side"] == "short") or \
+               (smma_slope < 0 and position["side"] == "long"):
+                log_message(f"CRITICAL: Detected position ({position['side']}) opposite to slope direction ({smma_slope > 0 and 'positive' or 'negative'})")
+                log_message(f"Closing positions with reduce-only orders (doesn't require margin)")
+                # Close positions with reduce-only orders - this doesn't require margin
+                close_all_positions(api)
+                return True
+        
+        # If margin is low, just log it
         if available_margin < MIN_ORDER_VALUE and has_position():
-            log_message(f"Low margin detected (${available_margin:.2f}), but not closing positions")
+            log_message(f"Low margin detected (${available_margin:.2f}), but not closing positions as they align with slope direction")
             # Per user request: if there's not enough margin to open a trade, do nothing
             return
             
@@ -601,12 +612,6 @@ def place_aggressive_orders(api):
         available_margin = fetch_available_margin(api)
         fetch_current_positions(api)
         
-        # If margin is low, just log it and return
-        if available_margin < MIN_ORDER_VALUE:
-            manage_positions_for_low_margin(api)
-            log_message(f"Available margin (${available_margin:.2f}) is too low to place orders. Minimum: ${MIN_ORDER_VALUE}")
-            return False
-        
         # Determine order side based on SMMA slope
         if smma_slope > 0:
             # Positive slope - place buy orders
@@ -616,6 +621,22 @@ def place_aggressive_orders(api):
             # Negative slope - place sell orders
             order_side = "sell"
             log_message("Placing aggressive SELL orders due to negative SMMA slope")
+        
+        # CRITICAL: Always check for positions in the opposite direction of the slope
+        # This check happens regardless of margin
+        for position in current_positions:
+            if (smma_slope > 0 and position["side"] == "short") or \
+               (smma_slope < 0 and position["side"] == "long"):
+                log_message(f"CRITICAL: Detected position ({position['side']}) opposite to slope direction ({smma_slope > 0 and 'positive' or 'negative'})")
+                log_message(f"Closing positions with reduce-only orders (doesn't require margin)")
+                # Close positions with reduce-only orders - this doesn't require margin
+                close_all_positions(api)
+                return True
+        
+        # If margin is low, just log it and return
+        if available_margin < MIN_ORDER_VALUE:
+            log_message(f"Available margin (${available_margin:.2f}) is too low to place orders. Minimum: ${MIN_ORDER_VALUE}")
+            return False
         
         # Check if we should use reduce-only orders
         reduce_only = should_use_reduce_only(order_side)
